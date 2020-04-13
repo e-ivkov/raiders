@@ -3,14 +3,25 @@ import org.http4s._
 import org.http4s.server.blaze._
 import org.http4s.dsl.io._
 import org.http4s.implicits._
+import org.http4s.circe._
 import cats.implicits._
+import io.circe._
+import io.circe.generic.auto._
+import io.circe.syntax._
+
+case class Player(skill: Int)
 
 object Main extends IOApp {
 
+  implicit val decoder = jsonOf[IO, Player]
+
   val matchmakingService = HttpRoutes
     .of[IO] {
-      case req @ POST -> Root / "player" / "add" =>
-        Ok(s"Added player. Id: 1")
+      case request @ POST -> Root / "player" / "add" =>
+        for {
+          player   <- request.as[Player]
+          response <- Ok(s"Added player with skill ${player.skill}. Id: 1")
+        } yield response
       case GET -> Root / "player" / IntVar(id) / "remove" =>
         Ok(s"Removed player with id: $id")
       case GET -> Root / "player" / IntVar(id) / "set" / "skill" / IntVar(value) =>

@@ -13,4 +13,7 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-core"           % "2.0.0",
   "org.typelevel" %% "cats-effect"         % "2.1.2",
   "org.scalatest" % "scalatest_2.13"       % "3.1.1" % "test",
+  "org.http4s"    %% "http4s-circe"        % http4sVersion,
+  "io.circe"      %% "circe-generic"       % "0.13.0",
+  "io.circe"      %% "circe-literal"       % "0.13.0",
 )
