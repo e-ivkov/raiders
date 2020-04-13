@@ -12,4 +12,5 @@ libraryDependencies ++= Seq(
   "org.http4s"    %% "http4s-blaze-client" % http4sVersion,
   "org.typelevel" %% "cats-core"           % "2.0.0",
   "org.typelevel" %% "cats-effect"         % "2.1.2",
+  "org.scalatest" % "scalatest_2.13"       % "3.1.1" % "test",
 )
