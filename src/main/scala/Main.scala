@@ -1,4 +1,6 @@
+import cats._
 import cats.effect._
+import cats.implicits._
 import org.http4s._
 import org.http4s.server.blaze._
 import org.http4s.dsl.io._
@@ -20,7 +22,8 @@ object Main extends IOApp {
       case request @ POST -> Root / "player" / "add" =>
         for {
           player   <- request.as[Player]
-          response <- Ok(s"Added player with skill ${player.skill}. Id: 1")
+          id       <- DBConnection.addPlayer(player)
+          response <- Ok(s"Added player with skill ${player.skill}. Id: $id")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "remove" =>
         Ok(s"Removed player with id: $id")
@@ -35,11 +38,15 @@ object Main extends IOApp {
     }
     .orNotFound
 
-  def run(args: List[String]): IO[ExitCode] =
-    BlazeServerBuilder[IO]
-      .bindHttp(8080, "localhost")
-      .withHttpApp(Main.matchmakingService)
-      .resource
-      .use(_ => IO.never)
-      .as(ExitCode.Success)
+  def run(args: List[String]): IO[ExitCode] = {
+    for {
+      _ <- DBConnection.init
+      blazeServer <- BlazeServerBuilder[IO]
+                      .bindHttp(8080, "localhost")
+                      .withHttpApp(Main.matchmakingService)
+                      .resource
+                      .use(_ => IO.never)
+                      .as(ExitCode.Success)
+    } yield blazeServer
+  }
 }

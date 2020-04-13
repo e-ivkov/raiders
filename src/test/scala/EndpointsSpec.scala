@@ -9,6 +9,7 @@ import org.http4s.circe._
 
 class EndpointsSpec extends AnyFlatSpec with Matchers {
   "player" should "be added successfully" in {
+    //TODO: mock DB
     val response = Main.matchmakingService
       .run(Request(method = POST, uri = uri"/player/add").withEntity(Player(100).asJson))
       .unsafeRunSync()
