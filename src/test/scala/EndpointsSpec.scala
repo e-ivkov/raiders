@@ -12,7 +12,9 @@ import cats.implicits._
 
 class EndpointsSpec extends AnyFlatSpec with Matchers {
   object TestPlayers extends Entities.Players {
-    override def addPlayer(player: Player): IO[Int] = 1.pure[IO]
+    override def add(player: Player): IO[Int] = 1.pure[IO]
+
+    override def remove(id: Int): IO[Int] = ???
   }
 
   "player" should "be added successfully" in {

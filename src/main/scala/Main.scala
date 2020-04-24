@@ -22,7 +22,7 @@ object Main extends IOApp {
       case request @ POST -> Root / "player" / "add" =>
         for {
           player   <- request.as[Player]
-          id       <- players.addPlayer(player)
+          id       <- players.add(player)
           response <- Ok(s"Added player with skill ${player.skill}. Id: $id")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "remove" =>
@@ -39,11 +39,12 @@ object Main extends IOApp {
     .orNotFound
 
   def run(args: List[String]): IO[ExitCode] = {
+    implicit val db = RaidersDB()
     for {
-      _ <- RaidersDB.init
+      _ <- db.migrate
       blazeServer <- BlazeServerBuilder[IO]
                       .bindHttp(8080, "localhost")
-                      .withHttpApp(Main.matchmakingService(RaidersDB.Players))
+                      .withHttpApp(Main.matchmakingService(RaidersDB.players))
                       .resource
                       .use(_ => IO.never)
                       .as(ExitCode.Success)

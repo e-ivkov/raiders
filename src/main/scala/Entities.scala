@@ -2,7 +2,8 @@ import cats.effect.IO
 
 object Entities {
   trait Players {
-    def addPlayer(player: Player): IO[Int]
+    def add(player: Player): IO[Int]
+    def remove(id: Int): IO[Int]
   }
 
   trait Queues {}
