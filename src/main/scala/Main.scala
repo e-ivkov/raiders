@@ -10,6 +10,8 @@ import cats.implicits._
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
+import pureconfig._
+import pureconfig.generic.auto._
 
 case class Player(skill: Int)
 
@@ -39,9 +41,12 @@ object Main extends IOApp {
     .orNotFound
 
   def run(args: List[String]): IO[ExitCode] = {
-    implicit val db = RaidersDB()
     for {
-      _ <- db.migrate
+      conf <- IO.fromEither(
+               ConfigSource.default.load[RaidersDB.Conf].leftMap(e => new Throwable(e.prettyPrint()))
+             )
+      implicit0(db: RaidersDB) <- IO.pure(RaidersDB(conf))
+      _                        <- db.migrate
       blazeServer <- BlazeServerBuilder[IO]
                       .bindHttp(8080, "localhost")
                       .withHttpApp(Main.matchmakingService(RaidersDB.players))

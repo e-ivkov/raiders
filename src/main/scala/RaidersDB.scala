@@ -10,15 +10,15 @@ import doobie.util.transactor.Transactor.Aux
 
 import scala.concurrent.ExecutionContext
 
-class RaidersDB private {
+class RaidersDB private (conf: RaidersDB.Conf) {
   private val executionContext      = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   val xa: Aux[IO, Unit] = Transactor.fromDriverManager[IO](
     "org.postgresql.Driver",   // driver classname
     "jdbc:postgresql:raiders", // connect URL (driver-specific)
-    "postgres",                // user
-    "docker",                  // password
+    conf.username,             // user
+    conf.password,             // password
     Blocker.liftExecutionContext(executionContext)
   )
 
@@ -31,7 +31,7 @@ class RaidersDB private {
 }
 
 object RaidersDB {
-  def apply(): RaidersDB = new RaidersDB()
+  def apply(conf: Conf): RaidersDB = new RaidersDB(conf)
 
   def players(implicit raidersDB: RaidersDB): Entities.Players = new Entities.Players {
     override def add(player: Player) =
@@ -41,4 +41,9 @@ object RaidersDB {
 
     override def remove(id: Int): IO[Int] = ???
   }
+
+  case class Conf(
+      username: String,
+      password: String,
+  )
 }
