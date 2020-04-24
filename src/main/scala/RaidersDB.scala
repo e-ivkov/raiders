@@ -5,11 +5,11 @@ import doobie._
 import doobie.implicits._
 import doobie.util.ExecutionContexts
 
-object DBConnection {
+object RaidersDB {
 
-  implicit val cs = IO.contextShift(ExecutionContexts.synchronous)
+  private implicit val cs = IO.contextShift(ExecutionContexts.synchronous)
 
-  val xa = Transactor.fromDriverManager[IO](
+  private val xa = Transactor.fromDriverManager[IO](
     "org.postgresql.Driver",                                    // driver classname
     "jdbc:postgresql:raiders",                                  // connect URL (driver-specific)
     "postgres",                                                 // user
@@ -24,7 +24,10 @@ object DBConnection {
                   |)
        """.stripMargin.update.run.transact(xa)
 
-  def addPlayer(player: Player) = sql"insert into players (skill) values (${player.skill}) returning id".update
-    .withUniqueGeneratedKeys[Int]("id")
-    .transact(xa)
+  object Players extends Entities.Players {
+    override def addPlayer(player: Player) =
+      sql"insert into players (skill) values (${player.skill}) returning id".update
+        .withUniqueGeneratedKeys[Int]("id")
+        .transact(xa)
+  }
 }

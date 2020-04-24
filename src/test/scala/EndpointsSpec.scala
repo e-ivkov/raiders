@@ -6,11 +6,18 @@ import org.scalatest.matchers.should.Matchers
 import io.circe.generic.auto._
 import io.circe.syntax._
 import org.http4s.circe._
+import cats._
+import cats.effect._
+import cats.implicits._
 
 class EndpointsSpec extends AnyFlatSpec with Matchers {
+  object TestPlayers extends Entities.Players {
+    override def addPlayer(player: Player): IO[Int] = 1.pure[IO]
+  }
+
   "player" should "be added successfully" in {
-    //TODO: mock DB
-    val response = Main.matchmakingService
+    val response = Main
+      .matchmakingService(TestPlayers)
       .run(Request(method = POST, uri = uri"/player/add").withEntity(Player(100).asJson))
       .unsafeRunSync()
     response.status shouldBe Ok

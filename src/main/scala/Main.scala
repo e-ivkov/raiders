@@ -17,12 +17,12 @@ object Main extends IOApp {
 
   implicit val decoder = jsonOf[IO, Player]
 
-  val matchmakingService = HttpRoutes
+  def matchmakingService(players: Entities.Players) = HttpRoutes
     .of[IO] {
       case request @ POST -> Root / "player" / "add" =>
         for {
           player   <- request.as[Player]
-          id       <- DBConnection.addPlayer(player)
+          id       <- players.addPlayer(player)
           response <- Ok(s"Added player with skill ${player.skill}. Id: $id")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "remove" =>
@@ -40,10 +40,10 @@ object Main extends IOApp {
 
   def run(args: List[String]): IO[ExitCode] = {
     for {
-      _ <- DBConnection.init
+      _ <- RaidersDB.init
       blazeServer <- BlazeServerBuilder[IO]
                       .bindHttp(8080, "localhost")
-                      .withHttpApp(Main.matchmakingService)
+                      .withHttpApp(Main.matchmakingService(RaidersDB.Players))
                       .resource
                       .use(_ => IO.never)
                       .as(ExitCode.Success)
