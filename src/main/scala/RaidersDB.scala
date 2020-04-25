@@ -31,12 +31,13 @@ object RaidersDB {
   def apply(conf: Conf): RaidersDB = new RaidersDB(conf)
 
   def players(implicit raidersDB: RaidersDB): Entities.Players = new Entities.Players {
-    override def add(player: Player) =
+    override def add(player: Player): IO[Int] =
       sql"insert into players (skill) values (${player.skill}) returning id".update
         .withUniqueGeneratedKeys[Int]("id")
         .transact(raidersDB.xa)
 
-    override def remove(id: Int): IO[Int] = ???
+    override def remove(id: Int): IO[Int] =
+      sql"delete from players where id=$id".update.run.transact(raidersDB.xa)
   }
 
   case class Conf(

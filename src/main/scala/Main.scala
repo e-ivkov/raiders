@@ -28,7 +28,10 @@ object Main extends IOApp {
           response <- Ok(s"Added player with skill ${player.skill}. Id: $id")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "remove" =>
-        Ok(s"Removed player with id: $id")
+        for {
+          _        <- players.remove(id)
+          response <- Ok(s"Removed player with id: $id")
+        } yield response
       case GET -> Root / "player" / IntVar(id) / "set" / "skill" / IntVar(value) =>
         Ok(s"Set skill for player $id to $value")
       case GET -> Root / "player" / IntVar(id) / "match" / "1vs1" =>
