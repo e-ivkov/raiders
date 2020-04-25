@@ -15,6 +15,16 @@ import pureconfig.generic.auto._
 
 case class Player(skill: Int)
 
+case class GameConf(maxSkill: Int)
+
+case class MatchmakingConf(tolerance: Float)
+
+case class ServiceConf(
+    db: RaidersDB.Conf,
+    game: GameConf,
+    matchmaking: MatchmakingConf
+)
+
 object Main extends IOApp {
 
   implicit val decoder = jsonOf[IO, Player]
