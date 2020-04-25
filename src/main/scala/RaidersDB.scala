@@ -38,6 +38,9 @@ object RaidersDB {
 
     override def remove(id: Int): IO[Int] =
       sql"delete from players where id=$id".update.run.transact(raidersDB.xa)
+
+    override def setSkill(id: Int, skill: Int): IO[Int] =
+      sql"update players set skill=$skill where id=$id".update.run.transact(raidersDB.xa)
   }
 
   case class Conf(

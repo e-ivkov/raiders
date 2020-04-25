@@ -14,13 +14,31 @@ class EndpointsSpec extends AnyFlatSpec with Matchers {
   object TestPlayers extends Entities.Players {
     override def add(player: Player): IO[Int] = 1.pure[IO]
 
-    override def remove(id: Int): IO[Int] = ???
+    override def remove(id: Int): IO[Int] = 1.pure[IO]
+
+    override def setSkill(id: Int, skill: Int): IO[Int] = 1.pure[IO]
   }
 
   "player" should "be added successfully" in {
     val response = Main
       .matchmakingService(TestPlayers)
       .run(Request(method = POST, uri = uri"/player/add").withEntity(Player(100).asJson))
+      .unsafeRunSync()
+    response.status shouldBe Ok
+  }
+
+  "player" should "be removed successfully" in {
+    val response = Main
+      .matchmakingService(TestPlayers)
+      .run(Request(method = GET, uri = uri"/player/1/remove"))
+      .unsafeRunSync()
+    response.status shouldBe Ok
+  }
+
+  "player skill" should "be set successfully" in {
+    val response = Main
+      .matchmakingService(TestPlayers)
+      .run(Request(method = GET, uri = uri"/player/1/set/skill/1"))
       .unsafeRunSync()
     response.status shouldBe Ok
   }
