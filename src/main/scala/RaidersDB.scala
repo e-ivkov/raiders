@@ -7,7 +7,7 @@ import doobie._
 import doobie.implicits._
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor.Aux
-
+import scala.io.Source
 import scala.concurrent.ExecutionContext
 
 class RaidersDB private (conf: RaidersDB.Conf) {
@@ -22,12 +22,9 @@ class RaidersDB private (conf: RaidersDB.Conf) {
     Blocker.liftExecutionContext(executionContext)
   )
 
-  def migrate = sql"""
-                  |create table if not exists players (
-                  |    id serial primary key,
-                  |    skill int not null
-                  |)
-       """.stripMargin.update.run.transact(xa)
+  private val playersSql = Fragment.const(Source.fromResource("migrations/players.sql").mkString)
+
+  def migrate: IO[Int] = playersSql.stripMargin.update.run.transact(xa)
 }
 
 object RaidersDB {
