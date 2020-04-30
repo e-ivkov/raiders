@@ -7,7 +7,9 @@ object Entities {
     def setSkill(id: Int, skill: Int): IO[Int]
   }
 
-  trait Queues {}
+  trait Queue {
+    def add(playerId: Int): IO[Int]
+  }
 
   trait Matches {}
 }

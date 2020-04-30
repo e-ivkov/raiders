@@ -17,7 +17,7 @@ case class Player(skill: Int)
 
 case class GameConf(maxSkill: Int)
 
-case class MatchmakingConf(tolerance: Float)
+case class MatchmakingConf(tolerance: Float, timeLimitMs: Int)
 
 case class ServiceConf(
     db: RaidersDB.Conf,
@@ -47,21 +47,31 @@ object Main extends IOApp {
           _        <- players.setSkill(id, value)
           response <- Ok(s"Set skill for player $id to $value")
         } yield response
-      case GET -> Root / "player" / IntVar(id) / "match" / "1vs1" =>
-        Ok(s"The queue id is 1 for 1vs1 match")
-      case GET -> Root / "queue" / IntVar(id) =>
-        Ok(s"Approximate match time for queue $id entry is 100ms")
-      case GET -> Root / "match" / IntVar(id) =>
+      case GET -> Root / "player" / IntVar(id) / "search" / "match" / "1vs1" =>
+        Ok(s"Started searching")
+      case GET -> Root / "player" / IntVar(id) / "search" / "status" =>
+        Ok(
+          s"Approximate match time for player $id is 100ms (FOUND - player in matched_players | SEARCHING - player in a queue | NO SEARCH STARTED)"
+        )
+      case GET -> Root / "match" / IntVar(id) / "players" =>
         Ok(s"The players for the match $id have been found: Player1, Player2")
+      case GET -> Root / "match" / IntVar(id) / "accept" =>
+        Ok(
+          s"Match $id have been accepted, matchmaking entries (matched_players, matches) for these players will be deleted."
+        )
+      case GET -> Root / "match" / IntVar(id) / "reject" =>
+        Ok(
+          s"Match $id have been rejected, (matches, matched_players) for these players will be deleted and they will be added back to queue."
+        )
     }
     .orNotFound
 
   def run(args: List[String]): IO[ExitCode] = {
     for {
       conf <- IO.fromEither(
-               ConfigSource.default.load[RaidersDB.Conf].leftMap(e => new Throwable(e.prettyPrint()))
+               ConfigSource.default.load[ServiceConf].leftMap(e => new Throwable(e.prettyPrint()))
              )
-      implicit0(db: RaidersDB) <- IO.pure(RaidersDB(conf))
+      implicit0(db: RaidersDB) <- IO.pure(RaidersDB(conf.db))
       _                        <- db.migrate
       blazeServer <- BlazeServerBuilder[IO]
                       .bindHttp(8080, "localhost")

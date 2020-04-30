@@ -22,12 +22,25 @@ class RaidersDB private (conf: RaidersDB.Conf) {
     Blocker.liftExecutionContext(executionContext)
   )
 
-  private val playersSql = Fragment.const(Source.fromResource("migrations/players.sql").mkString)
+  private val playersSql        = Fragment.const(Source.fromResource(RaidersDB.playersFilename).mkString)
+  private val matchesSql        = Fragment.const(Source.fromResource(RaidersDB.matchesFilename).mkString)
+  private val queueSql          = Fragment.const(Source.fromResource(RaidersDB.queueFilename).mkString)
+  private val matchedPlayersSql = Fragment.const(Source.fromResource(RaidersDB.matchedPlayersFilename).mkString)
 
-  def migrate: IO[Int] = playersSql.stripMargin.update.run.transact(xa)
+  def migrate: IO[Unit] = for {
+    _ <- playersSql.stripMargin.update.run.transact(xa)
+    _ <- matchesSql.stripMargin.update.run.transact(xa)
+    _ <- matchedPlayersSql.stripMargin.update.run.transact(xa)
+    _ <- queueSql.stripMargin.update.run.transact(xa)
+  } yield ()
 }
 
 object RaidersDB {
+  final val playersFilename        = "migrations/players.sql"
+  final val matchesFilename        = "migrations/matches.sql"
+  final val queueFilename          = "migrations/queue.sql"
+  final val matchedPlayersFilename = "migrations/matched_players.sql"
+
   def apply(conf: Conf): RaidersDB = new RaidersDB(conf)
 
   def players(implicit raidersDB: RaidersDB): Entities.Players = new Entities.Players {
@@ -41,6 +54,10 @@ object RaidersDB {
 
     override def setSkill(id: Int, skill: Int): IO[Int] =
       sql"update players set skill=$skill where id=$id".update.run.transact(raidersDB.xa)
+  }
+
+  def queue(implicit raidersDB: RaidersDB): Entities.Queue = new Entities.Queue {
+    override def add(playerId: Int): IO[Int] = ???
   }
 
   case class Conf(
