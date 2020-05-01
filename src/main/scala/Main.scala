@@ -12,6 +12,7 @@ import io.circe.generic.auto._
 import io.circe.syntax._
 import pureconfig._
 import pureconfig.generic.auto._
+import java.time.LocalDateTime
 
 // Requests
 case class Player(skill: Int)
@@ -33,19 +34,15 @@ object SearchStatus {
 case class MatchedPlayers(players: List[Int])
 
 // Configuration
-case class GameConf(maxSkill: Int)
-
-case class MatchmakingConf(tolerance: Float, timeLimitMs: Int)
 
 case class ServiceConf(
     db: RaidersDB.Conf,
-    game: GameConf,
-    matchmaking: MatchmakingConf
+    matchmaking: Matchmaker.Conf
 )
 
 object Main extends IOApp {
 
-  implicit val decoder = jsonOf[IO, Player]
+  implicit val decoder: EntityDecoder[IO, Player] = jsonOf[IO, Player]
 
   def matchmakingService(entityProvider: EntityProvider, matchmaker: Matchmaker) = HttpRoutes
     .of[IO] {
@@ -69,7 +66,7 @@ object Main extends IOApp {
       case GET -> Root / "player" / IntVar(id) / "search" / "match" / "1vs1" =>
         for {
           _        <- entityProvider.queue.add(id)
-          _        <- matchmaker.findMatches()
+          _        <- matchmaker.findMatch(List(), LocalDateTime.now()).pure[IO]
           response <- Ok(s"Started searching")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "search" / "status" =>
@@ -108,7 +105,8 @@ object Main extends IOApp {
       blazeServer <- BlazeServerBuilder[IO]
                       .bindHttp(8080, "localhost")
                       .withHttpApp(
-                        Main.matchmakingService(RaidersDB.entityProvider, Matchmaker.oneVsOneMatchmaker)
+                        Main
+                          .matchmakingService(RaidersDB.entityProvider, Matchmaker.oneVsOneMatchmaker(conf.matchmaking))
                       )
                       .resource
                       .use(_ => IO.never)

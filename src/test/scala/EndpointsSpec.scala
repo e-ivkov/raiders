@@ -1,3 +1,5 @@
+import java.time.LocalDateTime
+
 import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.implicits._
@@ -29,7 +31,7 @@ class EndpointsSpec extends AnyFlatSpec with Matchers {
   }
 
   object TestMatchmaker extends Matchmaker {
-    override def findMatches(): IO[Unit] = ().pure[IO]
+    override def findMatch(queue: List[Matchmaker.Entry], currentTime: LocalDateTime): Option[List[Int]] = None
   }
 
   "player" should "be added successfully" in {

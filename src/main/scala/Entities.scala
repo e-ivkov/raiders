@@ -20,7 +20,7 @@ object Entities {
   }
 
   trait MatchedPlayers {
-    def add(playerId: Int): IO[Int]
+    def add(playerId: Int, matchId: Int): IO[Int]
     def remove(playerId: Int): IO[Int]
     def matchId(playerId: Int): IO[Option[Int]]
     def players(matchId: Int): IO[List[Int]]
