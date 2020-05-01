@@ -13,8 +13,26 @@ import io.circe.syntax._
 import pureconfig._
 import pureconfig.generic.auto._
 
+// Requests
 case class Player(skill: Int)
 
+// Responses
+case class PlayerAdded(id: Int)
+
+sealed trait SearchStatus
+object SearchStatus {
+
+  case class Found(matchId: Int, status: String = "FOUND") extends SearchStatus
+
+  case class Searching(status: String = "SEARCHING") extends SearchStatus
+
+  case class NotStarted(status: String = "SEARCH NOT STARTED") extends SearchStatus
+
+}
+
+case class MatchedPlayers(players: List[Int])
+
+// Configuration
 case class GameConf(maxSkill: Int)
 
 case class MatchmakingConf(tolerance: Float, timeLimitMs: Int)
@@ -29,40 +47,54 @@ object Main extends IOApp {
 
   implicit val decoder = jsonOf[IO, Player]
 
-  def matchmakingService(players: Entities.Players) = HttpRoutes
+  def matchmakingService(entityProvider: EntityProvider, matchmaker: Matchmaker) = HttpRoutes
     .of[IO] {
       case request @ POST -> Root / "player" / "add" =>
         for {
           player   <- request.as[Player]
-          id       <- players.add(player)
-          response <- Ok(s"Added player with skill ${player.skill}. Id: $id")
+          id       <- entityProvider.players.add(player)
+          response <- Ok(PlayerAdded(id).asJson)
         } yield response
       case GET -> Root / "player" / IntVar(id) / "remove" =>
         for {
-          _        <- players.remove(id)
-          response <- Ok(s"Removed player with id: $id")
+          nLines   <- entityProvider.players.remove(id)
+          response <- if (nLines > 0) Ok(s"Removed player with id: $id") else NotFound(s"No player found with id: $id")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "set" / "skill" / IntVar(value) =>
         for {
-          _        <- players.setSkill(id, value)
-          response <- Ok(s"Set skill for player $id to $value")
+          nLines <- entityProvider.players.setSkill(id, value)
+          response <- if (nLines > 0) Ok(s"Set skill for player $id to $value")
+                     else NotFound(s"No player found with id: $id")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "search" / "match" / "1vs1" =>
-        Ok(s"Started searching")
+        for {
+          _        <- entityProvider.queue.add(id)
+          _        <- matchmaker.findMatches()
+          response <- Ok(s"Started searching")
+        } yield response
       case GET -> Root / "player" / IntVar(id) / "search" / "status" =>
-        Ok(
-          s"Approximate match time for player $id is 100ms (FOUND - player in matched_players | SEARCHING - player in a queue | NO SEARCH STARTED)"
-        )
+        for {
+          queueHas      <- entityProvider.queue.has(id)
+          matchIdOption <- entityProvider.matchedPlayers.matchId(id)
+          response <- if (queueHas) Ok(SearchStatus.Searching().asJson)
+                     else
+                       matchIdOption match {
+                         case Some(matchId) => Ok(SearchStatus.Found(matchId).asJson)
+                         case None          => Ok(SearchStatus.NotStarted().asJson)
+                       }
+        } yield response
       case GET -> Root / "match" / IntVar(id) / "players" =>
-        Ok(s"The players for the match $id have been found: Player1, Player2")
+        for {
+          players  <- entityProvider.matchedPlayers.players(id)
+          response <- Ok(MatchedPlayers(players).asJson)
+        } yield response
       case GET -> Root / "match" / IntVar(id) / "accept" =>
-        Ok(
-          s"Match $id have been accepted, matchmaking entries (matched_players, matches) for these players will be deleted."
-        )
-      case GET -> Root / "match" / IntVar(id) / "reject" =>
-        Ok(
-          s"Match $id have been rejected, (matches, matched_players) for these players will be deleted and they will be added back to queue."
-        )
+        for {
+          _ <- entityProvider.matches.remove(id)
+          response <- Ok(
+                       s"Match $id have been accepted, the data about this match will be deleted."
+                     )
+        } yield response
     }
     .orNotFound
 
@@ -75,7 +107,9 @@ object Main extends IOApp {
       _                        <- db.migrate
       blazeServer <- BlazeServerBuilder[IO]
                       .bindHttp(8080, "localhost")
-                      .withHttpApp(Main.matchmakingService(RaidersDB.players))
+                      .withHttpApp(
+                        Main.matchmakingService(RaidersDB.entityProvider, Matchmaker.oneVsOneMatchmaker)
+                      )
                       .resource
                       .use(_ => IO.never)
                       .as(ExitCode.Success)

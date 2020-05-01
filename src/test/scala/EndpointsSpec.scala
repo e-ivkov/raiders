@@ -11,17 +11,30 @@ import cats.effect._
 import cats.implicits._
 
 class EndpointsSpec extends AnyFlatSpec with Matchers {
-  object TestPlayers extends Entities.Players {
-    override def add(player: Player): IO[Int] = 1.pure[IO]
 
-    override def remove(id: Int): IO[Int] = 1.pure[IO]
+  object TestEntityProvider extends EntityProvider {
+    override def players: Entities.Players = new Entities.Players {
+      override def add(player: Player): IO[Int] = 1.pure[IO]
 
-    override def setSkill(id: Int, skill: Int): IO[Int] = 1.pure[IO]
+      override def remove(id: Int): IO[Int] = 1.pure[IO]
+
+      override def setSkill(id: Int, skill: Int): IO[Int] = 1.pure[IO]
+    }
+
+    override def queue: Entities.Queue = ???
+
+    override def matches: Entities.Matches = ???
+
+    override def matchedPlayers: Entities.MatchedPlayers = ???
+  }
+
+  object TestMatchmaker extends Matchmaker {
+    override def findMatches(): IO[Unit] = ().pure[IO]
   }
 
   "player" should "be added successfully" in {
     val response = Main
-      .matchmakingService(TestPlayers)
+      .matchmakingService(TestEntityProvider, TestMatchmaker)
       .run(Request(method = POST, uri = uri"/player/add").withEntity(Player(100).asJson))
       .unsafeRunSync()
     response.status shouldBe Ok
@@ -29,7 +42,7 @@ class EndpointsSpec extends AnyFlatSpec with Matchers {
 
   "player" should "be removed successfully" in {
     val response = Main
-      .matchmakingService(TestPlayers)
+      .matchmakingService(TestEntityProvider, TestMatchmaker)
       .run(Request(method = GET, uri = uri"/player/1/remove"))
       .unsafeRunSync()
     response.status shouldBe Ok
@@ -37,7 +50,7 @@ class EndpointsSpec extends AnyFlatSpec with Matchers {
 
   "player skill" should "be set successfully" in {
     val response = Main
-      .matchmakingService(TestPlayers)
+      .matchmakingService(TestEntityProvider, TestMatchmaker)
       .run(Request(method = GET, uri = uri"/player/1/set/skill/1"))
       .unsafeRunSync()
     response.status shouldBe Ok

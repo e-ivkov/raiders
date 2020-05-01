@@ -1,11 +1,13 @@
 import java.util.concurrent.Executors
+import java.sql.Timestamp
+import java.time.LocalDateTime
 
 import cats._
 import cats.effect._
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import doobie.util.ExecutionContexts
+import doobie.implicits.javasql._
 import doobie.util.transactor.Transactor.Aux
 import scala.io.Source
 import scala.concurrent.ExecutionContext
@@ -57,7 +59,41 @@ object RaidersDB {
   }
 
   def queue(implicit raidersDB: RaidersDB): Entities.Queue = new Entities.Queue {
+    override def add(playerId: Int): IO[Int] =
+      sql"insert into queue (player_id, request_time) values ($playerId, ${Timestamp.valueOf(LocalDateTime.now())})".update.run
+        .transact(raidersDB.xa)
+
+    override def remove(playerId: Int): IO[Int] = ???
+
+    override def has(playerId: Int): IO[Boolean] = ???
+
+    override def entries(): IO[List[Entities.Queue.Entry]] = ???
+  }
+
+  def matchedPlayers(implicit raidersDB: RaidersDB): Entities.MatchedPlayers = new Entities.MatchedPlayers {
     override def add(playerId: Int): IO[Int] = ???
+
+    override def remove(playerId: Int): IO[Int] = ???
+
+    override def matchId(playerId: Int): IO[Option[Int]] = ???
+
+    override def players(matchId: Int): IO[List[Int]] = ???
+  }
+
+  def matches(implicit raidersDB: RaidersDB): Entities.Matches = new Entities.Matches {
+    override def add(playerId: Int): IO[Int] = ???
+
+    override def remove(playerId: Int): IO[Int] = ???
+  }
+
+  def entityProvider(implicit raidersDB: RaidersDB): EntityProvider = new EntityProvider {
+    override def players: Entities.Players = RaidersDB.players
+
+    override def queue: Entities.Queue = RaidersDB.queue
+
+    override def matches: Entities.Matches = RaidersDB.matches
+
+    override def matchedPlayers: Entities.MatchedPlayers = RaidersDB.matchedPlayers
   }
 
   case class Conf(
