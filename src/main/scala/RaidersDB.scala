@@ -57,7 +57,15 @@ object RaidersDB {
     override def setSkill(id: Int, skill: Int): IO[Int] =
       sql"update players set skill=$skill where id=$id".update.run.transact(raidersDB.xa)
 
-    override def skill(id: Int): IO[Option[Int]] = ???
+    override def skill(id: Int): IO[Option[Int]] =
+      sql"select skill from players where id=$id"
+        .query[Int]
+        .stream
+        .take(1)
+        .compile
+        .toList
+        .transact(raidersDB.xa)
+        .map(list => list.headOption)
   }
 
   def queue(implicit raidersDB: RaidersDB): Entities.Queue = new Entities.Queue {
@@ -65,28 +73,62 @@ object RaidersDB {
       sql"insert into queue (player_id, request_time) values ($playerId, ${Timestamp.valueOf(LocalDateTime.now())})".update.run
         .transact(raidersDB.xa)
 
-    override def remove(playerId: Int): IO[Int] = ???
+    override def remove(playerId: Int): IO[Int] =
+      sql"delete from queue where player_id=$playerId".update.run.transact(raidersDB.xa)
 
-    override def has(playerId: Int): IO[Boolean] = ???
+    override def has(playerId: Int): IO[Boolean] = sql"select player_id from queue where player_id=$playerId"
+      .query[Int]
+      .stream
+      .take(1)
+      .compile
+      .toList
+      .transact(raidersDB.xa)
+      .map(list => list.nonEmpty)
 
-    override def entries(): IO[List[Entities.Queue.Entry]] = ???
+    override def entries(): IO[List[Entities.Queue.Entry]] = sql"select * from queue"
+      .query[(Int, Timestamp)]
+      .stream
+      .compile
+      .toList
+      .transact(raidersDB.xa)
+      .map(list => list.map(entry => Entities.Queue.Entry(entry._1, entry._2.toLocalDateTime)))
   }
 
   def matchedPlayers(implicit raidersDB: RaidersDB): Entities.MatchedPlayers = new Entities.MatchedPlayers {
 
-    override def remove(playerId: Int): IO[Int] = ???
+    override def remove(playerId: Int): IO[Int] =
+      sql"delete from matched_players where player_id=$playerId".update.run.transact(raidersDB.xa)
 
-    override def matchId(playerId: Int): IO[Option[Int]] = ???
+    override def matchId(playerId: Int): IO[Option[Int]] =
+      sql"select match_id from matched_players where player_id=$playerId"
+        .query[Int]
+        .stream
+        .take(1)
+        .compile
+        .toList
+        .transact(raidersDB.xa)
+        .map(list => list.headOption)
 
-    override def players(matchId: Int): IO[List[Int]] = ???
+    override def players(matchId: Int): IO[List[Int]] =
+      sql"select player_id from matched_players where match_id=$matchId"
+        .query[Int]
+        .stream
+        .compile
+        .toList
+        .transact(raidersDB.xa)
 
-    override def add(playerId: Int, matchId: Int): IO[Int] = ???
+    override def add(playerId: Int, matchId: Int): IO[Int] =
+      sql"insert into matched_players (player_id, match_id) values ($playerId, $matchId)".update.run
+        .transact(raidersDB.xa)
   }
 
   def matches(implicit raidersDB: RaidersDB): Entities.Matches = new Entities.Matches {
-    override def add(): IO[Int] = ???
+    override def add(): IO[Int] = sql"insert into matches default values returning id".update
+      .withUniqueGeneratedKeys[Int]("id")
+      .transact(raidersDB.xa)
 
-    override def remove(matchId: Int): IO[Int] = ???
+    override def remove(matchId: Int): IO[Int] =
+      sql"delete from matches where id=$matchId".update.run.transact(raidersDB.xa)
   }
 
   def entityProvider(implicit raidersDB: RaidersDB): EntityProvider = new EntityProvider {
