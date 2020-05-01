@@ -63,12 +63,13 @@ object Main extends IOApp {
           response <- if (nLines > 0) Ok(s"Set skill for player $id to $value")
                      else NotFound(s"No player found with id: $id")
         } yield response
-      case GET -> Root / "player" / IntVar(id) / "search" / "match" / "1vs1" =>
+      case GET -> Root / "player" / IntVar(id) / "search" / "match" / "1vs1" => {
         for {
           _        <- entityProvider.queue.add(id)
           _        <- matchmaker.makeMatches(entityProvider)
           response <- Ok(s"Started searching")
         } yield response
+      }
       case GET -> Root / "player" / IntVar(id) / "search" / "status" =>
         for {
           queueHas      <- entityProvider.queue.has(id)

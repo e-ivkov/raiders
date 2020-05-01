@@ -2,6 +2,8 @@ import Entities.Queue
 import cats._
 import cats.effect._
 import cats.implicits._
+import cats.data.OptionT
+
 import scala.math.max
 import java.time.{LocalDateTime, ZoneOffset}
 
@@ -9,31 +11,33 @@ trait Matchmaker {
   def makeMatches(entityProvider: EntityProvider): IO[Unit] = {
     def getQueue = {
       for {
-        queueEntities <- entityProvider.queue.entries()
+        queueEntities <- OptionT.liftF(entityProvider.queue.entries())
         matchmakingEntities <- queueEntities
                                 .map(entry =>
                                   for {
-                                    Some(skill) <- entityProvider.players.skill(entry.playerId)
+                                    skill <- OptionT(entityProvider.players.skill(entry.playerId))
                                   } yield Matchmaker.Entry(entry.playerId, skill, entry.timestamp)
                                 )
                                 .sequence
       } yield matchmakingEntities
     }
-    for {
-      queue                       <- getQueue
-      currentTime                 <- LocalDateTime.now().pure[IO]
-      Some(foundMatch: List[Int]) <- findMatch(queue, currentTime).pure[IO]
-      matchId                     <- entityProvider.matches.add()
-      _ <- foundMatch
-            .map(playerId =>
-              for {
-                _ <- entityProvider.queue.remove(playerId)
-                _ <- entityProvider.matchedPlayers.add(playerId, matchId)
-              } yield ()
-            )
-            .sequence
-      _ <- makeMatches(entityProvider)
+    val result: OptionT[IO, Unit] = for {
+      queue      <- getQueue
+      foundMatch <- OptionT.fromOption[IO](findMatch(queue, LocalDateTime.now()))
+      matchId    <- OptionT.liftF(entityProvider.matches.add())
+      _ <- OptionT.liftF(
+            foundMatch
+              .map(playerId =>
+                for {
+                  _ <- entityProvider.queue.remove(playerId)
+                  _ <- entityProvider.matchedPlayers.add(playerId, matchId)
+                } yield ()
+              )
+              .sequence
+          )
+      _ <- OptionT.liftF(makeMatches(entityProvider))
     } yield ()
+    result.value.map(_ => ())
   }
 
   def findMatch(queue: List[Matchmaker.Entry], currentTime: LocalDateTime): Option[List[Int]]
