@@ -6,6 +6,7 @@ object Entities {
     def add(player: Player): IO[Int]
     def remove(id: Int): IO[Int]
     def setSkill(id: Int, skill: Int): IO[Int]
+    def skill(id: Int): IO[Option[Int]]
   }
 
   trait Queue {
@@ -27,7 +28,7 @@ object Entities {
   }
 
   trait Matches {
-    def add(playerId: Int): IO[Int]
-    def remove(playerId: Int): IO[Int]
+    def add(): IO[Int]
+    def remove(matchId: Int): IO[Int]
   }
 }

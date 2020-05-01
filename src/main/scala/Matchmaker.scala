@@ -6,6 +6,36 @@ import scala.math.max
 import java.time.{LocalDateTime, ZoneOffset}
 
 trait Matchmaker {
+  def makeMatches(entityProvider: EntityProvider): IO[Unit] = {
+    def getQueue = {
+      for {
+        queueEntities <- entityProvider.queue.entries()
+        matchmakingEntities <- queueEntities
+                                .map(entry =>
+                                  for {
+                                    Some(skill) <- entityProvider.players.skill(entry.playerId)
+                                  } yield Matchmaker.Entry(entry.playerId, skill, entry.timestamp)
+                                )
+                                .sequence
+      } yield matchmakingEntities
+    }
+    for {
+      queue                       <- getQueue
+      currentTime                 <- LocalDateTime.now().pure[IO]
+      Some(foundMatch: List[Int]) <- findMatch(queue, currentTime).pure[IO]
+      matchId                     <- entityProvider.matches.add()
+      _ <- foundMatch
+            .map(playerId =>
+              for {
+                _ <- entityProvider.queue.remove(playerId)
+                _ <- entityProvider.matchedPlayers.add(playerId, matchId)
+              } yield ()
+            )
+            .sequence
+      _ <- makeMatches(entityProvider)
+    } yield ()
+  }
+
   def findMatch(queue: List[Matchmaker.Entry], currentTime: LocalDateTime): Option[List[Int]]
 }
 

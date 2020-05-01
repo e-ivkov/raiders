@@ -56,6 +56,8 @@ object RaidersDB {
 
     override def setSkill(id: Int, skill: Int): IO[Int] =
       sql"update players set skill=$skill where id=$id".update.run.transact(raidersDB.xa)
+
+    override def skill(id: Int): IO[Option[Int]] = ???
   }
 
   def queue(implicit raidersDB: RaidersDB): Entities.Queue = new Entities.Queue {
@@ -71,19 +73,20 @@ object RaidersDB {
   }
 
   def matchedPlayers(implicit raidersDB: RaidersDB): Entities.MatchedPlayers = new Entities.MatchedPlayers {
-    override def add(playerId: Int): IO[Int] = ???
 
     override def remove(playerId: Int): IO[Int] = ???
 
     override def matchId(playerId: Int): IO[Option[Int]] = ???
 
     override def players(matchId: Int): IO[List[Int]] = ???
+
+    override def add(playerId: Int, matchId: Int): IO[Int] = ???
   }
 
   def matches(implicit raidersDB: RaidersDB): Entities.Matches = new Entities.Matches {
-    override def add(playerId: Int): IO[Int] = ???
+    override def add(): IO[Int] = ???
 
-    override def remove(playerId: Int): IO[Int] = ???
+    override def remove(matchId: Int): IO[Int] = ???
   }
 
   def entityProvider(implicit raidersDB: RaidersDB): EntityProvider = new EntityProvider {

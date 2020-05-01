@@ -66,7 +66,7 @@ object Main extends IOApp {
       case GET -> Root / "player" / IntVar(id) / "search" / "match" / "1vs1" =>
         for {
           _        <- entityProvider.queue.add(id)
-          _        <- matchmaker.findMatch(List(), LocalDateTime.now()).pure[IO]
+          _        <- matchmaker.makeMatches(entityProvider)
           response <- Ok(s"Started searching")
         } yield response
       case GET -> Root / "player" / IntVar(id) / "search" / "status" =>

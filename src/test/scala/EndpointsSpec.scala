@@ -21,6 +21,8 @@ class EndpointsSpec extends AnyFlatSpec with Matchers {
       override def remove(id: Int): IO[Int] = 1.pure[IO]
 
       override def setSkill(id: Int, skill: Int): IO[Int] = 1.pure[IO]
+
+      override def skill(id: Int): IO[Option[Int]] = Some(100).pure[IO]
     }
 
     override def queue: Entities.Queue = ???
