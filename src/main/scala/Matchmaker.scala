@@ -57,6 +57,8 @@ object Matchmaker {
         k <= conf.tolerance
       }
       val pairs = for (first <- queue; second <- queue) yield (first, second)
-      pairs.find(pair => isMatch(pair._1, pair._2)).map(pair => List(pair._1.playerId, pair._2.playerId))
+      pairs
+        .find(pair => isMatch(pair._1, pair._2) && pair._1.playerId != pair._2.playerId)
+        .map(pair => List(pair._1.playerId, pair._2.playerId))
     }
 }
