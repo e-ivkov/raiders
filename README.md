@@ -54,6 +54,7 @@ And also the database engine should be Postgres.
 docker pull postgres
 mkdir -p $HOME/docker/volumes/postgres
 docker run --rm --name pg-docker -e POSTGRES_PASSWORD=docker -d -p 5432:5432 -v $HOME/docker/volumes/postgres:/var/lib/postgresql/data  postgres
+createdb -h localhost -U postgres raiders
 ```
 
 You can find a helpful article on DB setup with docker here:
@@ -81,6 +82,31 @@ curl http://localhost:8080/match/1/players
 curl http://localhost:8080/match/1/accept
 # Output: Match 1 have been accepted, the data about this match will be deleted.
 ```
+
+### Endpoints Spec
+Sadly it's impossible to generate OpenAPI documentation from raw http4s endpoints.
+
+But hopefully the http4s endpoints themselves should be rather descriptive, so you can find them in `Main.scala`.
+And also example is provided on top with the basic service usage.
+
+Here is a not very formal spec of endpoints:
+
+```
+- POST /player/add ACCEPTS BODY {"skill": int} RETURNS OK({"id": int})
+
+- GET /player/{id}/remove RETURNS OK(Player removed) or NotFound(message)
+
+- GET /player/{id}/set/skill/{newSkillValue} RETURNS OK(Skill set) or NotFound(message) 
+
+- GET /player/{id}/search/match/1vs1 RETURNS OK(Search started)
+
+- GET /player/{id}/search/status RETURNS OK({"status": "SEARCHING"} | {"status: "FOUND", "matchId": int} | {"status": "SEARCH NOT STARTED"})
+
+- GET /match/{id}/players RETURNS OK({"players": [playerId: int]})
+
+- GET /match/{id}/accept RETURNS OK(Match accepted, data will be deleted.)
+```
+
 Future plans
 ------------
 Support custom matchmaking params and formulas.
